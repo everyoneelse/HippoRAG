@@ -4,10 +4,11 @@ HippoRAG知识图谱保存功能演示
 """
 
 import os
+import argparse
 from src.hipporag.HippoRAG import HippoRAG
 from src.hipporag.utils.config_utils import BaseConfig
 
-def demo_save_knowledge_graph():
+def demo_save_knowledge_graph(embedding_model_path=None):
     """演示知识图谱保存功能"""
     
     print("🚀 HippoRAG知识图谱保存功能演示")
@@ -23,11 +24,17 @@ def demo_save_knowledge_graph():
         "苹果公司在全球拥有众多零售店。"
     ]
     
+    # 确定嵌入模型路径
+    embedding_model_name = embedding_model_path if embedding_model_path else 'nvidia/NV-Embed-v2'
+    
+    if embedding_model_path:
+        print(f"🔧 使用本地嵌入模型路径: {embedding_model_name}")
+    
     # 配置HippoRAG
     config = BaseConfig(
         save_dir='demo_outputs',
         llm_name='gpt-4o-mini',
-        embedding_model_name='nvidia/NV-Embed-v2',
+        embedding_model_name=embedding_model_name,
         dataset='demo',
         force_index_from_scratch=True,  # 重新构建
         force_openie_from_scratch=True
@@ -87,7 +94,7 @@ def demo_save_knowledge_graph():
     config_reload = BaseConfig(
         save_dir='demo_outputs',
         llm_name='gpt-4o-mini',
-        embedding_model_name='nvidia/NV-Embed-v2',
+        embedding_model_name=embedding_model_name,  # 使用相同的嵌入模型路径
         dataset='demo',
         force_index_from_scratch=False,  # 使用已保存的数据
         force_openie_from_scratch=False
@@ -110,7 +117,13 @@ def demo_save_knowledge_graph():
     print(f"\n✅ 知识图谱重新加载和检索测试成功!")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="HippoRAG知识图谱保存功能演示")
+    parser.add_argument('--embedding_path', type=str, default=None, 
+                       help='本地嵌入模型路径（如果模型下载在本地）')
+    
+    args = parser.parse_args()
+    
     # 设置环境变量（如果需要）
     # os.environ["OPENAI_API_KEY"] = "your-api-key-here"
     
-    demo_save_knowledge_graph()
+    demo_save_knowledge_graph(args.embedding_path)

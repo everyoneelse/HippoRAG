@@ -76,7 +76,7 @@ from src.hipporag.utils.config_utils import BaseConfig
 config = BaseConfig(
     save_dir='outputs',
     llm_name='gpt-4o-mini',
-    embedding_model_name='nvidia/NV-Embed-v2',
+    embedding_model_name='nvidia/NV-Embed-v2',  # 或使用本地路径
     dataset='my_dataset'
 )
 
@@ -89,6 +89,17 @@ hipporag.index(docs)
 
 # 导出知识图谱
 hipporag.export_knowledge_graph('json', 'my_knowledge_graph.json')
+```
+
+### 使用本地模型
+```python
+# 如果您的模型下载在本地
+config = BaseConfig(
+    save_dir='outputs',
+    llm_name='gpt-4o-mini',
+    embedding_model_name='/path/to/your/nvidia-NV-Embed-v2',  # 本地路径
+    dataset='my_dataset'
+)
 ```
 
 ### 完整导出示例
@@ -230,11 +241,31 @@ hipporag.export_knowledge_graph('json', 'debug_graph.json')
 - `demo_save_kg.py`: 基本保存功能演示
 - `export_knowledge_graph.py`: 完整导出功能演示
 
-运行示例：
+### 运行示例
+
+#### 使用默认模型（从Hugging Face下载）
 ```bash
 python demo_save_kg.py
 python export_knowledge_graph.py --dataset sample --export_format json
 ```
+
+#### 使用本地模型路径
+```bash
+# 基本演示
+python demo_save_kg.py --embedding_path /path/to/your/nvidia-NV-Embed-v2
+
+# 完整导出
+python export_knowledge_graph.py \
+    --dataset sample \
+    --embedding_path /path/to/your/nvidia-NV-Embed-v2 \
+    --export_format all
+```
+
+### 命令行参数说明
+- `--embedding_path`: 指定本地嵌入模型路径
+- `--dataset`: 数据集名称
+- `--export_format`: 导出格式（json/graphml/gml/all）
+- `--export_dir`: 导出目录
 
 ## 🎉 总结
 

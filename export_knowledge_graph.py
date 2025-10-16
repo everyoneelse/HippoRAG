@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--dataset', type=str, default='sample', help='数据集名称')
     parser.add_argument('--llm_name', type=str, default='gpt-4o-mini', help='LLM模型名称')
     parser.add_argument('--embedding_name', type=str, default='nvidia/NV-Embed-v2', help='嵌入模型名称')
+    parser.add_argument('--embedding_path', type=str, default=None, help='本地嵌入模型路径（如果模型下载在本地）')
     parser.add_argument('--save_dir', type=str, default='outputs', help='保存目录')
     parser.add_argument('--export_format', type=str, choices=['json', 'graphml', 'gml', 'all'], 
                        default='all', help='导出格式')
@@ -27,20 +28,27 @@ def main():
     save_dir = os.path.join(args.save_dir, dataset_name)
     export_dir = args.export_dir
     
+    # 处理嵌入模型路径
+    embedding_model_name = args.embedding_name
+    if args.embedding_path:
+        # 如果指定了本地路径，使用本地路径
+        embedding_model_name = args.embedding_path
+        print(f"🔧 使用本地嵌入模型路径: {embedding_model_name}")
+    
     # 确保导出目录存在
     os.makedirs(export_dir, exist_ok=True)
     
     print(f"🚀 开始导出知识图谱...")
     print(f"📁 数据集: {dataset_name}")
     print(f"🤖 LLM模型: {args.llm_name}")
-    print(f"🔢 嵌入模型: {args.embedding_name}")
+    print(f"🔢 嵌入模型: {embedding_model_name}")
     print(f"📂 导出目录: {export_dir}")
     
     # 配置HippoRAG
     config = BaseConfig(
         save_dir=save_dir,
         llm_name=args.llm_name,
-        embedding_model_name=args.embedding_name,
+        embedding_model_name=embedding_model_name,  # 使用处理后的嵌入模型名称/路径
         dataset=dataset_name,
         force_index_from_scratch=False,  # 使用已有的索引
         force_openie_from_scratch=False
