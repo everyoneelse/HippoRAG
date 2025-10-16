@@ -8,11 +8,26 @@ import argparse
 from src.hipporag.HippoRAG import HippoRAG
 from src.hipporag.utils.config_utils import BaseConfig
 
-def demo_save_knowledge_graph(embedding_model_path=None):
+def demo_save_knowledge_graph(embedding_model_path=None, openai_api_key=None):
     """演示知识图谱保存功能"""
     
     print("🚀 HippoRAG知识图谱保存功能演示")
     print("=" * 50)
+    
+    # 设置 API Key
+    if openai_api_key:
+        os.environ['OPENAI_API_KEY'] = openai_api_key
+        print("🔑 使用提供的 OpenAI API Key")
+    elif not os.getenv('OPENAI_API_KEY'):
+        print("⚠️  未设置 OPENAI_API_KEY，如果使用 OpenAI 模型可能会失败")
+        print("💡 提示: 可以通过以下方式设置:")
+        print("   方法1: export OPENAI_API_KEY='your-api-key'")
+        print("   方法2: python demo_save_kg.py --openai_api_key your-api-key")
+    else:
+        # 显示已设置的 API Key（部分遮蔽）
+        api_key = os.getenv('OPENAI_API_KEY')
+        masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
+        print(f"✅ 已设置 OPENAI_API_KEY: {masked_key}")
     
     # 准备示例数据
     docs = [
@@ -120,10 +135,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HippoRAG知识图谱保存功能演示")
     parser.add_argument('--embedding_path', type=str, default=None, 
                        help='本地嵌入模型路径（如果模型下载在本地）')
+    parser.add_argument('--openai_api_key', type=str, default=None,
+                       help='OpenAI API Key（也可通过环境变量 OPENAI_API_KEY 设置）')
     
     args = parser.parse_args()
     
-    # 设置环境变量（如果需要）
-    # os.environ["OPENAI_API_KEY"] = "your-api-key-here"
-    
-    demo_save_knowledge_graph(args.embedding_path)
+    demo_save_knowledge_graph(args.embedding_path, args.openai_api_key)

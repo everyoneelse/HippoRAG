@@ -20,8 +20,28 @@ def main():
     parser.add_argument('--export_format', type=str, choices=['json', 'graphml', 'gml', 'all'], 
                        default='all', help='导出格式')
     parser.add_argument('--export_dir', type=str, default='knowledge_exports', help='导出目录')
+    parser.add_argument('--openai_api_key', type=str, default=None, 
+                       help='OpenAI API Key（也可通过环境变量 OPENAI_API_KEY 设置）')
+    parser.add_argument('--llm_base_url', type=str, default=None,
+                       help='LLM服务的base URL（用于本地部署的模型）')
     
     args = parser.parse_args()
+    
+    # 设置 API Key
+    if args.openai_api_key:
+        os.environ['OPENAI_API_KEY'] = args.openai_api_key
+        print("🔑 使用命令行提供的 OpenAI API Key")
+    elif not os.getenv('OPENAI_API_KEY'):
+        print("⚠️  未设置 OPENAI_API_KEY 环境变量")
+        if 'gpt' in args.llm_name.lower() or 'openai' in args.llm_name.lower():
+            print("💡 提示: 使用 OpenAI 模型需要设置 API Key")
+            print("   方法1: export OPENAI_API_KEY='your-api-key'")
+            print("   方法2: --openai_api_key your-api-key")
+    else:
+        # 显示已设置的 API Key（部分遮蔽）
+        api_key = os.getenv('OPENAI_API_KEY')
+        masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
+        print(f"✅ 已设置 OPENAI_API_KEY: {masked_key}")
     
     # 设置路径
     dataset_name = args.dataset
@@ -48,6 +68,7 @@ def main():
     config = BaseConfig(
         save_dir=save_dir,
         llm_name=args.llm_name,
+        llm_base_url=args.llm_base_url,  # 支持自定义 LLM base URL
         embedding_model_name=embedding_model_name,  # 使用处理后的嵌入模型名称/路径
         dataset=dataset_name,
         force_index_from_scratch=False,  # 使用已有的索引
