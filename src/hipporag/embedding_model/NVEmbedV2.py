@@ -48,6 +48,7 @@ class NVEmbedV2EmbeddingModel(BaseEmbeddingModel):
                 "trust_remote_code": True,
                 'device_map': "auto",  # added this line to use multiple GPUs
                 "torch_dtype": self.global_config.embedding_model_dtype,
+                "local_files_only": True,  # Bypass network verification, use local files only
                 # **kwargs
             },
             "encode_params": {
