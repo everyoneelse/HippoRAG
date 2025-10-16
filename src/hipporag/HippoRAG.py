@@ -1144,12 +1144,21 @@ class HippoRAG:
             }
             
             # 添加节点内容信息
-            if 'name' in v.attributes():
+            # 首先检查节点属性中是否已有content
+            if 'content' in v.attributes():
+                node_data['content'] = v['content']
+            # 如果节点属性中没有content，则从embedding stores中查找
+            elif 'name' in v.attributes():
                 node_name = v['name']
                 if node_name in self.entity_embedding_store.get_all_id_to_rows():
                     node_data['content'] = self.entity_embedding_store.get_row(node_name).get('content', '')
                 elif node_name in self.chunk_embedding_store.get_all_id_to_rows():
                     node_data['content'] = self.chunk_embedding_store.get_row(node_name).get('content', '')
+                else:
+                    # 如果在embedding stores中也找不到，设置为空字符串
+                    node_data['content'] = ''
+            else:
+                node_data['content'] = ''
             
             nodes.append(node_data)
         
