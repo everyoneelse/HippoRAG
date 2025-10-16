@@ -24,8 +24,17 @@ def main():
                        help='OpenAI API Key（也可通过环境变量 OPENAI_API_KEY 设置）')
     parser.add_argument('--llm_base_url', type=str, default=None,
                        help='LLM服务的base URL（用于本地部署的模型）')
+    parser.add_argument('--offline', action='store_true',
+                       help='离线模式，不尝试连接网络下载模型文件')
     
     args = parser.parse_args()
+    
+    # 设置离线模式
+    if args.offline:
+        os.environ['HF_HUB_OFFLINE'] = '1'
+        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+        print("🔧 已启用离线模式，将不会尝试网络连接")
     
     # 设置 API Key
     if args.openai_api_key:

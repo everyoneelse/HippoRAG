@@ -8,11 +8,18 @@ import argparse
 from src.hipporag.HippoRAG import HippoRAG
 from src.hipporag.utils.config_utils import BaseConfig
 
-def demo_save_knowledge_graph(embedding_model_path=None, openai_api_key=None):
+def demo_save_knowledge_graph(embedding_model_path=None, openai_api_key=None, offline=False):
     """演示知识图谱保存功能"""
     
     print("🚀 HippoRAG知识图谱保存功能演示")
     print("=" * 50)
+    
+    # 设置离线模式
+    if offline:
+        os.environ['HF_HUB_OFFLINE'] = '1'
+        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+        print("🔧 已启用离线模式，将不会尝试网络连接")
     
     # 设置 API Key
     if openai_api_key:
@@ -137,7 +144,9 @@ if __name__ == "__main__":
                        help='本地嵌入模型路径（如果模型下载在本地）')
     parser.add_argument('--openai_api_key', type=str, default=None,
                        help='OpenAI API Key（也可通过环境变量 OPENAI_API_KEY 设置）')
+    parser.add_argument('--offline', action='store_true',
+                       help='离线模式，不尝试连接网络下载模型文件')
     
     args = parser.parse_args()
     
-    demo_save_knowledge_graph(args.embedding_path, args.openai_api_key)
+    demo_save_knowledge_graph(args.embedding_path, args.openai_api_key, args.offline)

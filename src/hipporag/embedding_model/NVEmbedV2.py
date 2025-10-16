@@ -27,7 +27,15 @@ class NVEmbedV2EmbeddingModel(BaseEmbeddingModel):
         # Initializing the embedding model
         logger.debug(f"Initializing {self.__class__.__name__}'s embedding model with params: {self.embedding_config.model_init_params}")
 
-        self.embedding_model = AutoModel.from_pretrained(**self.embedding_config.model_init_params)
+        # 添加 local_files_only 参数以避免网络请求
+        model_init_params = self.embedding_config.model_init_params.copy()
+        
+        # 如果是本地路径，强制使用本地文件
+        if self.embedding_model_name.startswith('/') or self.embedding_model_name.startswith('./') or '\\' in self.embedding_model_name:
+            model_init_params['local_files_only'] = True
+            logger.info(f"检测到本地路径，设置 local_files_only=True: {self.embedding_model_name}")
+        
+        self.embedding_model = AutoModel.from_pretrained(**model_init_params)
         self.embedding_dim = self.embedding_model.config.hidden_size
 
     def _init_embedding_config(self) -> None:
