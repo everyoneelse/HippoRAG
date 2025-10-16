@@ -1136,10 +1136,11 @@ class HippoRAG:
         # 准备节点数据
         nodes = []
         for v in self.graph.vs:
+            node_name = v['name'] if 'name' in v.attributes() else f"node_{v.index}"
             node_data = {
                 'id': v.index,
-                'name': v['name'] if 'name' in v.attributes() else f"node_{v.index}",
-                'type': self._get_node_type(v['name'] if 'name' in v.attributes() else ''),
+                'name': node_name,  # hash ID，用作唯一标识符
+                'type': self._get_node_type(node_name),
                 'attributes': {attr: v[attr] for attr in v.attributes() if attr != 'name'}
             }
             
@@ -1149,7 +1150,6 @@ class HippoRAG:
                 node_data['content'] = v['content']
             # 如果节点属性中没有content，则从embedding stores中查找
             elif 'name' in v.attributes():
-                node_name = v['name']
                 if node_name in self.entity_embedding_store.get_all_id_to_rows():
                     node_data['content'] = self.entity_embedding_store.get_row(node_name).get('content', '')
                 elif node_name in self.chunk_embedding_store.get_all_id_to_rows():
@@ -1159,6 +1159,9 @@ class HippoRAG:
                     node_data['content'] = ''
             else:
                 node_data['content'] = ''
+            
+            # 添加可读的标签字段（用实际内容作为显示名称）
+            node_data['label'] = node_data.get('content', node_name)
             
             nodes.append(node_data)
         
