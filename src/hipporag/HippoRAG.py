@@ -1092,6 +1092,238 @@ class HippoRAG:
         self.graph.write_pickle(self._graph_pickle_filename)
         logger.info(f"Saving graph completed!")
 
+    def export_knowledge_graph(self, export_format='json', output_path=None):
+        """
+        导出知识图谱到不同格式的文件
+        
+        Parameters:
+            export_format (str): 导出格式，支持 'json', 'graphml', 'gml', 'edgelist', 'pajek'
+            output_path (str): 输出文件路径，如果为None则使用默认路径
+        
+        Returns:
+            str: 导出文件的路径
+        """
+        if output_path is None:
+            output_path = os.path.join(self.working_dir, f"knowledge_graph.{export_format}")
+        
+        logger.info(f"Exporting knowledge graph to {export_format} format: {output_path}")
+        
+        try:
+            if export_format.lower() == 'json':
+                self._export_to_json(output_path)
+            elif export_format.lower() == 'graphml':
+                self.graph.write_graphml(output_path)
+            elif export_format.lower() == 'gml':
+                self.graph.write_gml(output_path)
+            elif export_format.lower() == 'edgelist':
+                self.graph.write_edgelist(output_path)
+            elif export_format.lower() == 'pajek':
+                self.graph.write_pajek(output_path)
+            else:
+                raise ValueError(f"Unsupported export format: {export_format}")
+            
+            logger.info(f"Knowledge graph exported successfully to: {output_path}")
+            return output_path
+            
+        except Exception as e:
+            logger.error(f"Error exporting knowledge graph: {str(e)}")
+            raise
+
+    def _export_to_json(self, output_path):
+        """
+        导出知识图谱到JSON格式，包含详细的节点和边信息
+        """
+        # 准备节点数据
+        nodes = []
+        for v in self.graph.vs:
+            node_data = {
+                'id': v.index,
+                'name': v['name'] if 'name' in v.attributes() else f"node_{v.index}",
+                'type': self._get_node_type(v['name'] if 'name' in v.attributes() else ''),
+                'attributes': {attr: v[attr] for attr in v.attributes() if attr != 'name'}
+            }
+            
+            # 添加节点内容信息
+            if 'name' in v.attributes():
+                node_name = v['name']
+                if node_name in self.entity_embedding_store.get_all_id_to_rows():
+                    node_data['content'] = self.entity_embedding_store.get_row(node_name).get('content', '')
+                elif node_name in self.chunk_embedding_store.get_all_id_to_rows():
+                    node_data['content'] = self.chunk_embedding_store.get_row(node_name).get('content', '')
+            
+            nodes.append(node_data)
+        
+        # 准备边数据
+        edges = []
+        for e in self.graph.es:
+            edge_data = {
+                'source': e.source,
+                'target': e.target,
+                'weight': e['weight'] if 'weight' in e.attributes() else 1.0,
+                'attributes': {attr: e[attr] for attr in e.attributes() if attr != 'weight'}
+            }
+            edges.append(edge_data)
+        
+        # 准备图谱统计信息
+        graph_stats = self.get_graph_info()
+        
+        # 组合所有数据
+        export_data = {
+            'metadata': {
+                'created_at': datetime.now().isoformat(),
+                'llm_model': self.global_config.llm_name,
+                'embedding_model': self.global_config.embedding_model_name,
+                'dataset': self.global_config.dataset if hasattr(self.global_config, 'dataset') else 'unknown',
+                'statistics': graph_stats
+            },
+            'nodes': nodes,
+            'edges': edges
+        }
+        
+        # 保存到JSON文件
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, indent=2, ensure_ascii=False)
+
+    def _get_node_type(self, node_name):
+        """
+        根据节点名称判断节点类型
+        """
+        if node_name.startswith('entity-'):
+            return 'entity'
+        elif node_name.startswith('chunk-'):
+            return 'passage'
+        else:
+            return 'unknown'
+
+    def export_openie_results(self, output_path=None):
+        """
+        导出OpenIE提取的结果到指定路径
+        
+        Parameters:
+            output_path (str): 输出文件路径，如果为None则使用默认路径
+        
+        Returns:
+            str: 导出文件的路径
+        """
+        if output_path is None:
+            output_path = os.path.join(self.working_dir, "openie_results_export.json")
+        
+        logger.info(f"Exporting OpenIE results to: {output_path}")
+        
+        try:
+            # 加载现有的OpenIE结果
+            all_openie_info, _ = self.load_existing_openie([])
+            
+            if all_openie_info:
+                # 添加元数据
+                export_data = {
+                    'metadata': {
+                        'created_at': datetime.now().isoformat(),
+                        'llm_model': self.global_config.llm_name,
+                        'total_documents': len(all_openie_info),
+                        'total_entities': sum(len(doc.get('extracted_entities', [])) for doc in all_openie_info),
+                        'total_triples': sum(len(doc.get('extracted_triples', [])) for doc in all_openie_info)
+                    },
+                    'documents': all_openie_info
+                }
+                
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump(export_data, f, indent=2, ensure_ascii=False)
+                
+                logger.info(f"OpenIE results exported successfully to: {output_path}")
+            else:
+                logger.warning("No OpenIE results found to export")
+                
+            return output_path
+            
+        except Exception as e:
+            logger.error(f"Error exporting OpenIE results: {str(e)}")
+            raise
+
+    def save_complete_knowledge_base(self, base_path=None):
+        """
+        保存完整的知识库，包括图结构、OpenIE结果和嵌入向量
+        
+        Parameters:
+            base_path (str): 基础保存路径，如果为None则使用工作目录
+        
+        Returns:
+            dict: 包含所有保存文件路径的字典
+        """
+        if base_path is None:
+            base_path = self.working_dir
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        export_dir = os.path.join(base_path, f"knowledge_base_export_{timestamp}")
+        os.makedirs(export_dir, exist_ok=True)
+        
+        logger.info(f"Saving complete knowledge base to: {export_dir}")
+        
+        saved_files = {}
+        
+        try:
+            # 1. 保存图结构（多种格式）
+            saved_files['graph_pickle'] = os.path.join(export_dir, "graph.pickle")
+            self.graph.write_pickle(saved_files['graph_pickle'])
+            
+            saved_files['graph_json'] = self.export_knowledge_graph('json', 
+                                                                   os.path.join(export_dir, "graph.json"))
+            
+            saved_files['graph_graphml'] = self.export_knowledge_graph('graphml', 
+                                                                      os.path.join(export_dir, "graph.graphml"))
+            
+            # 2. 保存OpenIE结果
+            saved_files['openie_results'] = self.export_openie_results(
+                os.path.join(export_dir, "openie_results.json"))
+            
+            # 3. 保存嵌入向量信息（元数据）
+            embeddings_info = {
+                'entity_embeddings': {
+                    'count': len(self.entity_embedding_store.get_all_ids()),
+                    'dimension': len(self.entity_embedding_store.get_embeddings([self.entity_embedding_store.get_all_ids()[0]])[0]) if self.entity_embedding_store.get_all_ids() else 0
+                },
+                'fact_embeddings': {
+                    'count': len(self.fact_embedding_store.get_all_ids()),
+                    'dimension': len(self.fact_embedding_store.get_embeddings([self.fact_embedding_store.get_all_ids()[0]])[0]) if self.fact_embedding_store.get_all_ids() else 0
+                },
+                'chunk_embeddings': {
+                    'count': len(self.chunk_embedding_store.get_all_ids()),
+                    'dimension': len(self.chunk_embedding_store.get_embeddings([self.chunk_embedding_store.get_all_ids()[0]])[0]) if self.chunk_embedding_store.get_all_ids() else 0
+                }
+            }
+            
+            saved_files['embeddings_info'] = os.path.join(export_dir, "embeddings_info.json")
+            with open(saved_files['embeddings_info'], 'w', encoding='utf-8') as f:
+                json.dump(embeddings_info, f, indent=2, ensure_ascii=False)
+            
+            # 4. 创建导出摘要
+            summary = {
+                'export_timestamp': timestamp,
+                'export_directory': export_dir,
+                'configuration': {
+                    'llm_model': self.global_config.llm_name,
+                    'embedding_model': self.global_config.embedding_model_name,
+                    'dataset': self.global_config.dataset if hasattr(self.global_config, 'dataset') else 'unknown'
+                },
+                'statistics': self.get_graph_info(),
+                'saved_files': saved_files
+            }
+            
+            summary_path = os.path.join(export_dir, "export_summary.json")
+            with open(summary_path, 'w', encoding='utf-8') as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+            
+            saved_files['summary'] = summary_path
+            
+            logger.info(f"Complete knowledge base saved successfully!")
+            logger.info(f"Export summary: {summary_path}")
+            
+            return saved_files
+            
+        except Exception as e:
+            logger.error(f"Error saving complete knowledge base: {str(e)}")
+            raise
+
     def get_graph_info(self) -> Dict:
         """
         Obtains detailed information about the graph such as the number of nodes,
