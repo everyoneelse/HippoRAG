@@ -7,6 +7,21 @@
 import os
 import json
 import argparse
+
+# 检查是否需要应用离线补丁
+def apply_offline_patch_if_needed(offline_mode):
+    if offline_mode:
+        try:
+            import hipporag_offline_patch
+            print("✅ 已应用离线补丁")
+        except ImportError:
+            print("⚠️  离线补丁文件不存在，使用环境变量方式")
+            os.environ.update({
+                'HF_HUB_OFFLINE': '1',
+                'TRANSFORMERS_OFFLINE': '1',
+                'HF_HUB_DISABLE_TELEMETRY': '1'
+            })
+
 from src.hipporag.HippoRAG import HippoRAG
 from src.hipporag.utils.config_utils import BaseConfig
 
@@ -29,12 +44,8 @@ def main():
     
     args = parser.parse_args()
     
-    # 设置离线模式
-    if args.offline:
-        os.environ['HF_HUB_OFFLINE'] = '1'
-        os.environ['TRANSFORMERS_OFFLINE'] = '1'
-        os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
-        print("🔧 已启用离线模式，将不会尝试网络连接")
+    # 应用离线补丁（如果需要）
+    apply_offline_patch_if_needed(args.offline)
     
     # 设置 API Key
     if args.openai_api_key:

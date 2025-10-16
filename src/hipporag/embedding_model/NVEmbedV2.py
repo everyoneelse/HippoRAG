@@ -1,9 +1,20 @@
 from copy import deepcopy
 from typing import List, Optional
+import os
 
 import numpy as np
 import torch
 from tqdm import tqdm
+
+# 在导入 transformers 之前设置离线环境变量
+os.environ.update({
+    'HF_HUB_OFFLINE': '1',
+    'TRANSFORMERS_OFFLINE': '1',
+    'HF_HUB_DISABLE_TELEMETRY': '1',
+    'HF_HUB_DISABLE_PROGRESS_BARS': '1',
+    'TOKENIZERS_PARALLELISM': 'false'
+})
+
 from transformers import AutoModel
 
 from ..utils.config_utils import BaseConfig
@@ -27,15 +38,32 @@ class NVEmbedV2EmbeddingModel(BaseEmbeddingModel):
         # Initializing the embedding model
         logger.debug(f"Initializing {self.__class__.__name__}'s embedding model with params: {self.embedding_config.model_init_params}")
 
-        # 添加 local_files_only 参数以避免网络请求
+        # 强制使用离线模式，避免任何网络请求
         model_init_params = self.embedding_config.model_init_params.copy()
         
-        # 如果是本地路径，强制使用本地文件
-        if self.embedding_model_name.startswith('/') or self.embedding_model_name.startswith('./') or '\\' in self.embedding_model_name:
-            model_init_params['local_files_only'] = True
-            logger.info(f"检测到本地路径，设置 local_files_only=True: {self.embedding_model_name}")
+        # 强制设置离线参数
+        model_init_params.update({
+            'local_files_only': True,
+            'use_auth_token': False,
+            'trust_remote_code': True
+        })
         
-        self.embedding_model = AutoModel.from_pretrained(**model_init_params)
+        logger.info(f"使用完全离线模式加载模型: {self.embedding_model_name}")
+        logger.debug(f"离线模式参数: {model_init_params}")
+        
+        try:
+            self.embedding_model = AutoModel.from_pretrained(**model_init_params)
+        except Exception as e:
+            logger.warning(f"离线模式加载失败，尝试备用方案: {e}")
+            # 备用方案：移除可能有问题的参数
+            backup_params = {
+                'pretrained_model_name_or_path': self.embedding_model_name,
+                'local_files_only': True,
+                'trust_remote_code': True,
+                'device_map': 'auto',
+                'torch_dtype': self.global_config.embedding_model_dtype
+            }
+            self.embedding_model = AutoModel.from_pretrained(**backup_params)
         self.embedding_dim = self.embedding_model.config.hidden_size
 
     def _init_embedding_config(self) -> None:
