@@ -52,11 +52,28 @@ class QuerySolution:
         }
 
 def text_processing(text):
+    """
+    文本规范化处理函数
+    - 保留所有 Unicode 字母（包括中文、日文等）和数字
+    - 删除标点符号和特殊字符
+    - 规范化空格
+    - 转换为小写（仅对有大小写概念的字符）
+    """
     if isinstance(text, list):
         return [text_processing(t) for t in text]
     if not isinstance(text, str):
         text = str(text)
-    return re.sub('[^A-Za-z0-9 ]', ' ', text.lower()).strip()
+    
+    # 使用 Unicode 字符类：保留字母（\w包含Unicode字母）、数字和空格
+    # \w 匹配 Unicode 字母、数字和下划线
+    # 我们保留字母、数字、空格，删除标点和特殊符号
+    # 注意：这里使用正则表达式的 Unicode 模式
+    text = re.sub(r'[^\w\s]', ' ', text, flags=re.UNICODE)  # 删除标点符号，保留字母、数字、空格
+    text = re.sub(r'_', ' ', text)  # 将下划线替换为空格
+    text = re.sub(r'\s+', ' ', text)  # 合并多个空格为一个
+    text = text.lower().strip()  # 转小写并去除首尾空格
+    
+    return text
 
 def reformat_openie_results(corpus_openie_results) -> (Dict[str, NerRawOutput], Dict[str, TripleRawOutput]):
 
