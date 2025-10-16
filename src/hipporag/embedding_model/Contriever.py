@@ -34,7 +34,7 @@ class ContrieverModel(BaseEmbeddingModel):
             f"Initializing {self.__class__.__name__}'s embedding model with params: {self.embedding_config.model_init_params}")
 
 
-        self.tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, local_files_only=True)
         self.embedding_model = AutoModel.from_pretrained(**self.embedding_config.model_init_params)
         self.embedding_model.eval()
         self.embedding_dim = self.embedding_model.config.hidden_size
@@ -57,6 +57,7 @@ class ContrieverModel(BaseEmbeddingModel):
                 "trust_remote_code": True,
                 "torch_dtype": self.global_config.embedding_model_dtype,
                 'device_map': "auto",  # added this line to use multiple GPUs
+                "local_files_only": True,  # Bypass network verification, use local files only
                 # **kwargs
             },
             "encode_params": {

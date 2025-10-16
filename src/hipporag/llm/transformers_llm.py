@@ -90,8 +90,8 @@ class TransformersLLM(BaseLLM):
         self.cache = LLM_Cache(
             os.path.join(global_config.save_dir, "llm_cache"),
             self.llm_name.replace('/', '_'))
-        self.model = AutoModelForCausalLM.from_pretrained(self.global_config.llm_name, device_map='auto', torch_dtype = torch.bfloat16)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.global_config.llm_name)
+        self.model = AutoModelForCausalLM.from_pretrained(self.global_config.llm_name, device_map='auto', torch_dtype = torch.bfloat16, local_files_only=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.global_config.llm_name, local_files_only=True)
 
         self.retry = 5
         
